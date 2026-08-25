@@ -1,0 +1,830 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+
+:root{
+  --espresso:#211612;
+  --espresso-2:#30201a;
+  --coffee:#6f4b3a;
+  --caramel:#b77b4f;
+  --cream:#f5efe8;
+  --cream-2:#ebe0d5;
+  --paper:#fffdfb;
+  --ink:#241b17;
+  --muted:#927d70;
+  --line:#e8ddd4;
+  --green:#3d8b61;
+  --red:#b9584c;
+  --shadow:0 18px 50px rgba(44,27,19,.10);
+  --shadow-soft:0 8px 24px rgba(44,27,19,.07);
+}
+
+*{box-sizing:border-box}
+html,body,#root{margin:0;width:100%;min-height:100%;font-family:Cairo,Tahoma,Arial,sans-serif}
+body{background:var(--cream);color:var(--ink);direction:rtl}
+button,input,select{font:inherit}
+button{cursor:pointer}
+
+/* ---------- APP ---------- */
+.pos{min-height:100vh;background:var(--cream)}
+
+/* ---------- HEADER ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  min-height:92px;padding:16px 34px;
+  display:grid;grid-template-columns:240px 1fr 250px;align-items:center;gap:24px;
+  background:rgba(33,22,18,.97);color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  box-shadow:0 8px 30px rgba(20,10,6,.18);
+}
+.topbar>div:first-child{grid-column:3;display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.topbar>div:first-child h1{margin:0;font-family:'Playfair Display',serif;font-size:30px;line-height:1;color:#fff;font-weight:700;letter-spacing:-.4px}
+.topbar>div:first-child>span{margin-top:6px;color:#c9b6aa;font-size:11px;font-weight:600}
+.topbar-actions{grid-column:2;grid-row:1;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.topbar-actions>button{height:45px;padding:0 18px;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:rgba(255,255,255,.045);color:#eee6e0;font-size:13px;font-weight:700;transition:.2s}
+.topbar-actions>button:hover{background:rgba(255,255,255,.10);transform:translateY(-1px)}
+.topbar-actions>button.nav-active{background:#fff;color:var(--espresso);border-color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.16)}
+.status{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px;color:#d5c4b9;font-size:12px;justify-content:flex-start}
+.online-dot{width:8px;height:8px;border-radius:50%;background:#56c981;box-shadow:0 0 0 4px rgba(86,201,129,.12)}
+.topbar-user{position:absolute;left:34px;top:16px;display:flex;align-items:center;gap:10px}
+.user-badge{display:flex;flex-direction:column;gap:1px;text-align:left}
+.user-badge strong{font-size:12px;color:#fff}.user-badge span{font-size:10px;color:#aa9589}
+.logout-button{height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:#3b2922;color:#fff;font-weight:700}
+
+/* ---------- CASHIER ---------- */
+.pos-layout{min-height:calc(100vh - 92px);display:grid;grid-template-columns:minmax(0,1fr) 390px;direction:ltr}
+.products-section{direction:rtl;padding:38px 42px 60px;background:linear-gradient(135deg,#f8f2eb 0%,#efe4d9 100%);min-width:0}
+.cart-section{direction:rtl;background:var(--espresso);color:#fff;padding:30px;display:flex;flex-direction:column;min-width:0;box-shadow:-15px 0 45px rgba(34,20,14,.12)}
+
+.section-title{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:25px;gap:20px}
+.section-title h2{margin:0;font-family:'Playfair Display',serif;font-size:34px;line-height:1;color:var(--espresso);font-weight:700}
+.section-title h2::before{content:'BARni CAFÉ';display:block;margin-bottom:8px;font-family:Cairo,sans-serif;font-size:10px;letter-spacing:3px;color:var(--caramel);font-weight:800}
+.section-title span{padding:7px 12px;border-radius:999px;background:#e5d6c9;color:var(--coffee);font-size:11px;font-weight:800}
+
+.category-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:25px}
+.category-buttons button{height:40px;padding:0 18px;border:1px solid #decfc3;border-radius:999px;background:rgba(255,255,255,.70);color:var(--coffee);font-size:12px;font-weight:800;transition:.18s}
+.category-buttons button:hover{border-color:var(--caramel);background:#fff}
+.category-buttons button.active{background:var(--espresso);border-color:var(--espresso);color:#fff;box-shadow:0 7px 18px rgba(33,22,18,.15)}
+
+.products-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.product-card{position:relative;min-height:300px;padding:0 0 19px;display:flex;flex-direction:column;text-align:right;overflow:hidden;border:1px solid rgba(116,79,58,.12);border-radius:24px;background:var(--paper);color:var(--ink);box-shadow:var(--shadow-soft);transition:.25s}
+.product-card:hover:not(:disabled){transform:translateY(-7px);box-shadow:var(--shadow);border-color:rgba(183,123,79,.35)}
+.product-card:disabled{opacity:.45}
+.product-icon{width:100%;height:165px;margin:0 0 16px;display:grid;place-items:center;border-radius:24px 24px 16px 16px;background:linear-gradient(145deg,#e9d7c7,#d9c1ae);font-size:58px;color:var(--espresso);position:relative}
+.product-icon::after{content:'☕';position:absolute;inset:0;display:grid;place-items:center;opacity:.08;font-size:110px}
+.product-card h3{margin:0 18px 5px;font-size:18px;font-weight:800;color:var(--espresso);position:relative;z-index:1}
+.product-card span{margin:0 18px;color:var(--muted);font-size:11px;position:relative;z-index:1}
+.product-card strong{margin:auto 18px 0;padding-top:18px;color:var(--caramel);font-size:20px;font-weight:800;position:relative;z-index:1}
+
+/* ---------- CART ---------- */
+.cart-header{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.10)}
+.cart-header h2{margin:0 0 3px;color:#fff;font-family:'Playfair Display',serif;font-size:24px}
+.cart-header span{color:#a99285;font-size:11px}
+.clear-button{padding:8px 12px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#33231c;color:#d9c8bd;font-size:11px;font-weight:700}
+.clear-button:hover{background:#432c22;color:#fff}
+.cart-items{display:grid;gap:9px;margin:17px 0;max-height:280px;overflow:auto;padding-left:2px}
+.empty-cart{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px dashed rgba(255,255,255,.15);border-radius:18px;background:rgba(255,255,255,.035);padding:22px}
+.empty-cart>div{font-size:34px;margin-bottom:8px}.empty-cart h3{margin:0 0 5px;color:#fff;font-size:15px}.empty-cart p{margin:0;color:#9e887b;font-size:11px}
+.cart-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:#2c1d17}
+.cart-item h3{margin:0 0 3px;color:#fff;font-size:13px}.cart-item>div:first-child span{color:#d49a6c;font-size:11px;font-weight:700}
+.quantity{display:flex;align-items:center;gap:6px}.quantity button{width:28px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#3a2820;color:#fff;font-weight:800}.quantity strong{min-width:18px;text-align:center;color:#fff;font-size:12px}
+.cart-footer{margin-top:auto}.order-options,.discount-options,.payment-options{margin-top:14px}.order-options h3,.discount-options h3,.payment-options h3{margin:0 0 7px;color:#d8c6ba;font-size:11px;font-weight:800}
+.order-type-buttons,.payment-type-buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.order-type-buttons button,.payment-type-buttons button{height:40px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#2c1d17;color:#d8c8be;font-size:11px;font-weight:800}
+.order-type-buttons button.selected,.payment-type-buttons button.selected{background:#fff;color:var(--espresso);border-color:#fff}
+.order-options input,.discount-input-row input{width:100%;height:40px;margin-top:7px;padding:0 11px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#2c1d17;color:#fff;outline:none}
+.order-options input::placeholder,.discount-input-row input::placeholder{color:#8f796d}
+.discount-input-row{display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:7px}.apply-discount-button,.remove-discount-button{border:0;border-radius:10px;background:#fff;color:var(--espresso);font-weight:800}.remove-discount-button{background:#a94c43;color:#fff}
+.discount-applied{margin-top:7px;padding:7px 9px;border-radius:8px;background:rgba(61,139,97,.15);color:#76c697;font-size:10px;font-weight:700}
+.summary{display:grid;gap:8px;margin-top:17px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10)}
+.summary-row{display:flex;justify-content:space-between;color:#9e887b;font-size:11px}.summary-row strong{color:#d9c8bc}.summary-row.discount-row,.summary-row.discount-row strong{color:#df766d!important}
+.final-total-row{margin-top:3px;color:#fff;font-size:17px;font-weight:800}.final-total-row strong{color:#e0a06d;font-size:21px}
+.checkout-button{width:100%;height:54px;margin-top:15px;border:0;border-radius:13px;background:#fff;color:var(--espresso);font-size:14px;font-weight:900;box-shadow:0 10px 25px rgba(0,0,0,.18);transition:.2s}.checkout-button:hover:not(:disabled){transform:translateY(-2px)}.checkout-button:disabled{background:#59463c;color:#8f7a70;box-shadow:none}
+
+/* ---------- OTHER PAGES ---------- */
+.kitchen-page,.sales-dashboard,.orders-history-page,.admin-page{width:100%;max-width:1450px;margin:auto;padding:40px;direction:rtl}
+.kitchen-heading,.admin-heading,.orders-history-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:25px}
+.kitchen-heading h2,.admin-heading h2,.orders-history-heading h2{margin:0 0 5px;font-family:'Playfair Display',serif;font-size:32px;color:var(--espresso)}
+.kitchen-heading p,.admin-heading p,.orders-history-heading p{margin:0;color:var(--muted);font-size:12px}
+.kitchen-count,.admin-count{padding:10px 14px;border-radius:999px;background:var(--espresso);color:#fff;font-size:11px;font-weight:800}
+.kitchen-status-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.kitchen-status-summary button{padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--coffee);display:flex;justify-content:space-between}.kitchen-status-summary button.active{background:var(--espresso);color:#fff;border-color:var(--espresso)}
+.orders-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}.order-card,.sales-period-box,.admin-products,.coupon-management-card,.add-product-card{border:1px solid var(--line);border-radius:20px;background:#fffdfb;box-shadow:var(--shadow-soft)}
+.order-card{padding:20px}.order-card-header,.order-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}.order-card-header h3{margin:0;font-size:16px}.order-card-header span{font-size:10px;color:var(--muted)}.order-card-header>strong{padding:6px 9px;border-radius:999px;background:var(--cream-2);font-size:10px;color:var(--coffee)}.order-info{display:flex;gap:6px;flex-wrap:wrap;margin:13px 0}.order-info span{padding:6px 9px;border-radius:8px;background:var(--cream);font-size:10px;color:var(--coffee)}.order-items{display:grid;gap:7px;padding:13px 0;border-block:1px solid var(--line)}.kitchen-item{display:flex;gap:7px;font-size:12px}.kitchen-item strong,.order-card-footer>strong{color:var(--caramel)}.order-card-footer{margin-top:13px}.order-card-footer button{padding:9px 12px;border:0;border-radius:9px;background:var(--espresso);color:#fff;font-size:11px;font-weight:800}
+.no-orders{padding:65px 20px;text-align:center;border:1px dashed #d8c8bb;border-radius:20px;background:#fff}.no-orders>div{font-size:32px}.no-orders h2{margin:10px 0 5px}.no-orders p{margin:0;color:var(--muted);font-size:12px}
+
+.sales-period-box,.admin-products,.coupon-management-card,.add-product-card{padding:20px;margin-bottom:18px}.sales-period-title{display:flex;justify-content:space-between;margin-bottom:12px;color:var(--muted);font-size:11px}.sales-period-selector{display:flex;gap:7px;flex-wrap:wrap}.sales-period-selector button{padding:9px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--coffee);font-size:11px}.sales-period-selector button.selected{background:var(--espresso);color:#fff}.export-sales-button{padding:10px 14px;border:0;border-radius:9px;background:var(--espresso);color:#fff;font-weight:800}
+.add-product-form,.coupon-add-form{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.add-product-form input,.add-product-form select,.coupon-add-form input,.edit-product-fields input,.edit-product-fields select{height:40px;width:100%;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:#fff;outline:none}.add-product-form button,.coupon-add-form button{border:0;border-radius:9px;background:var(--espresso);color:#fff;font-weight:800}
+.admin-product-list,.coupon-list{display:grid;gap:9px}.admin-product,.coupon-item{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fcf8f4}.admin-product-info{display:flex;align-items:center;gap:10px}.admin-product-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:13px;background:var(--cream-2);font-size:21px}.admin-product-info h4{margin:0 0 3px;font-size:13px}.admin-product-info span,.coupon-item span{color:var(--muted);font-size:10px}.admin-product-actions,.coupon-actions{display:flex;gap:6px}.admin-product-actions button,.coupon-actions button{padding:7px 10px;border:0;border-radius:8px;background:var(--cream-2);color:var(--coffee);font-size:10px;font-weight:800}.admin-product-actions .delete-product,.coupon-actions .delete-product{background:#fae9e6;color:var(--red)}.edit-product-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+
+/* ---------- LOGIN ---------- */
+.barni-login-page{min-height:100vh;display:grid;place-items:center;padding:25px;background:radial-gradient(circle at 20% 10%,#e9d8c8,transparent 30%),var(--cream)}
+.barni-login-card{width:min(430px,100%);padding:35px;border:1px solid var(--line);border-radius:28px;background:#fffdfb;box-shadow:var(--shadow);text-align:center}.barni-login-logo{width:72px;height:72px;display:grid;place-items:center;margin:0 auto 15px;border-radius:22px;background:var(--espresso);font-size:32px}.barni-login-card h1{font-family:'Playfair Display',serif;color:var(--espresso)}
+
+/* ---------- RECEIPT / TOAST ---------- */
+.receipt-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(24,14,10,.60);backdrop-filter:blur(6px)}.receipt-modal{width:min(470px,100%);max-height:90vh;overflow:auto;padding:28px;border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.25)}.receipt-actions{display:flex;gap:8px}.receipt-actions button{flex:1;padding:11px;border:0;border-radius:10px}.print-receipt-button{background:var(--espresso);color:#fff}.close-receipt-button{background:var(--cream-2);color:var(--coffee)}
+.barni-toast{position:fixed;left:24px;bottom:24px;z-index:10000;padding:12px 16px;border-radius:12px;background:var(--espresso);color:#fff;box-shadow:var(--shadow);font-size:12px;font-weight:700}.barni-toast-success{background:var(--green)}.barni-toast-error{background:var(--red)}
+
+@media(max-width:1200px){.topbar{grid-template-columns:180px 1fr 190px}.products-grid{grid-template-columns:repeat(2,1fr)}.pos-layout{grid-template-columns:minmax(0,1fr) 360px}}
+@media(max-width:900px){.topbar{position:relative;display:flex;flex-wrap:wrap;justify-content:center;padding:16px}.topbar>div:first-child{order:1;align-items:center;width:100%}.topbar-actions{order:2;width:100%}.status{order:3}.topbar-user{position:static;order:4}.pos-layout{grid-template-columns:1fr}.cart-section{min-height:650px}.products-grid{grid-template-columns:repeat(2,1fr)}.orders-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.products-section,.cart-section,.kitchen-page,.sales-dashboard,.orders-history-page,.admin-page{padding:20px}.products-grid,.orders-grid{grid-template-columns:1fr}.topbar-actions>button{flex:1;padding:0 8px;font-size:11px}.section-title h2{font-size:28px}.add-product-form,.coupon-add-form,.edit-product-fields{grid-template-columns:1fr}}
+
+@media print{body *{visibility:hidden}.receipt-overlay,.receipt-overlay *{visibility:visible}.receipt-overlay{position:absolute;inset:0;background:#fff}.receipt-modal{box-shadow:none}.receipt-actions{display:none}}
+
+
+/* =========================================================
+   BARni CAFÉ — PRODUCTION UI POLISH
+   Visual layer only. Existing business logic is preserved.
+========================================================= */
+
+html {
+  background: #f5efe8;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+::selection {
+  background: #b77b4f;
+  color: #fff;
+}
+
+button,
+input,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(183,123,79,.25);
+  outline-offset: 2px;
+}
+
+/* ---------- LOGIN ---------- */
+
+.barni-login-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.barni-login-card::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  top: -100px;
+  left: -80px;
+  border-radius: 50%;
+  background: rgba(183,123,79,.10);
+  pointer-events: none;
+}
+
+.barni-login-logo {
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(33,22,18,.20);
+}
+
+.barni-login-card h1 {
+  margin: 8px 0 4px;
+  font-size: 38px;
+  font-weight: 800;
+}
+
+.barni-login-card > p {
+  margin: 0 0 28px;
+  color: #927d70;
+  font-size: 13px;
+}
+
+.barni-login-form {
+  display: grid;
+  gap: 15px;
+  text-align: right;
+}
+
+.barni-login-form label {
+  display: grid;
+  gap: 7px;
+  color: #49352b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.barni-login-form input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #e3d6cc;
+  border-radius: 13px;
+  background: #fff;
+  color: #241b17;
+  direction: ltr;
+  text-align: left;
+  box-shadow: inset 0 1px 2px rgba(40,20,10,.03);
+  transition: .18s;
+}
+
+.barni-login-form input:focus {
+  border-color: #b77b4f;
+  box-shadow: 0 0 0 4px rgba(183,123,79,.10);
+  outline: none;
+}
+
+.barni-login-button {
+  width: 100%;
+  height: 52px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 14px;
+  background: #211612;
+  color: #fff;
+  font-weight: 900;
+  font-size: 14px;
+  box-shadow: 0 12px 25px rgba(33,22,18,.18);
+  transition: .2s;
+}
+
+.barni-login-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #30201a;
+}
+
+.barni-login-button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.barni-login-error {
+  padding: 11px 12px;
+  border: 1px solid #f0d0cc;
+  border-radius: 11px;
+  background: #fff1ef;
+  color: #a8473f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ---------- HEADER DETAILS ---------- */
+
+.topbar {
+  isolation: isolate;
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+  pointer-events: none;
+}
+
+.topbar-actions {
+  scrollbar-width: thin;
+}
+
+.topbar-user {
+  z-index: 2;
+}
+
+.logout-button:hover {
+  background: #4b3026;
+}
+
+/* ---------- CASHIER PRODUCT STATES ---------- */
+
+.product-card {
+  cursor: pointer;
+}
+
+.product-card.unavailable,
+.product-card:disabled {
+  cursor: not-allowed;
+}
+
+.product-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.18), transparent 35%);
+}
+
+.product-card strong::after {
+  content: " ر.ع";
+  font-size: .65em;
+  color: #927d70;
+}
+
+.products-grid {
+  align-items: stretch;
+}
+
+.products-section {
+  min-height: calc(100vh - 92px);
+}
+
+/* ---------- CART ---------- */
+
+.cart-section {
+  position: sticky;
+  top: 92px;
+  height: calc(100vh - 92px);
+  overflow: hidden;
+}
+
+.cart-items {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.16) transparent;
+}
+
+.cart-items::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cart-items::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.16);
+  border-radius: 999px;
+}
+
+/* ---------- SALES DASHBOARD ---------- */
+
+.sales-dashboard h2 {
+  font-family: "Playfair Display", Georgia, serif;
+  color: #211612;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.sales-heading-actions > div {
+  border: 1px solid #e8ddd4;
+}
+
+.sales-dashboard > div {
+  position: relative;
+}
+
+.sales-dashboard [style*="background: #241b17"] {
+  background: linear-gradient(145deg, #211612, #3b2922) !important;
+  border: 1px solid rgba(255,255,255,.04);
+  box-shadow: 0 14px 32px rgba(33,22,18,.12);
+}
+
+.sales-dashboard [style*="background: #f4eee9"] {
+  background: #fffdfb !important;
+  border: 1px solid #e8ddd4;
+}
+
+.sales-dashboard [style*="fontSize: '26px'"],
+.sales-dashboard [style*="font-size: 26px"] {
+  letter-spacing: -.5px;
+}
+
+/* ---------- ORDERS HISTORY ---------- */
+
+.orders-history-list {
+  display: grid;
+  gap: 13px;
+}
+
+.order-history-card {
+  padding: 18px;
+  border: 1px solid #e8ddd4;
+  border-radius: 18px;
+  background: #fffdfb;
+  box-shadow: 0 8px 24px rgba(44,27,19,.06);
+  transition: .18s;
+}
+
+.order-history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(44,27,19,.09);
+}
+
+/* ---------- COUPONS ---------- */
+
+.coupon-management-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.coupon-management-heading h3 {
+  margin: 0;
+  color: #211612;
+}
+
+.coupon-item {
+  min-height: 54px;
+}
+
+.coupon-item strong {
+  color: #211612;
+}
+
+/* ---------- RECEIPT ---------- */
+
+.receipt-paper {
+  padding: 24px;
+  border: 1px dashed #d8c7ba;
+  border-radius: 14px;
+  background: #fff;
+  color: #211612;
+}
+
+.receipt-header {
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed #d8c7ba;
+}
+
+.receipt-header h2,
+.receipt-header h3,
+.receipt-header p {
+  margin: 3px 0;
+}
+
+.receipt-meta {
+  display: grid;
+  gap: 5px;
+  padding: 13px 0;
+  color: #6f5a4d;
+  font-size: 11px;
+}
+
+.receipt-items {
+  display: grid;
+  gap: 7px;
+  padding: 12px 0;
+  border-block: 1px dashed #d8c7ba;
+}
+
+.receipt-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.receipt-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 15px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.receipt-thanks {
+  margin: 18px 0 0;
+  text-align: center;
+  color: #927d70;
+  font-size: 11px;
+}
+
+/* ---------- EMPTY / LOADING ---------- */
+
+.barni-login-card p {
+  line-height: 1.8;
+}
+
+/* ---------- TOUCH / SMALL SCREENS ---------- */
+
+@media (max-width: 900px) {
+  .cart-section {
+    position: relative;
+    top: auto;
+    height: auto;
+    max-height: none;
+  }
+
+  .products-section {
+    min-height: auto;
+  }
+
+  .topbar-user {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .barni-login-card {
+    padding: 27px 20px;
+    border-radius: 22px;
+  }
+
+  .barni-login-card h1 {
+    font-size: 32px;
+  }
+
+  .products-grid {
+    gap: 12px;
+  }
+
+  .product-card {
+    min-height: 245px;
+    border-radius: 18px;
+  }
+
+  .product-icon {
+    height: 125px;
+    border-radius: 18px 18px 12px 12px;
+  }
+
+  .cart-section {
+    padding: 20px;
+  }
+}
+
+/* ---------- REDUCED MOTION ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* =========================================================
+   BARni POS - FULL SCREEN CASHIER FIX
+========================================================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  min-width: 1100px;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* الهيدر */
+.topbar {
+  flex: 0 0 auto;
+  z-index: 50;
+}
+
+/* منطقة الكاشير الرئيسية */
+.main-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: calc(100vh - 118px);
+  overflow: hidden;
+}
+
+/* منطقة المنتجات */
+.products-section {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #b77b4f transparent;
+  padding-bottom: 40px;
+}
+
+/* شبكة المنتجات */
+.products-grid {
+  min-height: 0;
+  padding-bottom: 40px;
+}
+
+/* لوحة الطلب */
+.cart-section {
+  position: relative;
+  top: auto;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #6d4939 transparent;
+}
+
+/* نخلي عناصر السلة تظهر كاملة */
+.cart-items {
+  max-height: none;
+  overflow-y: auto;
+}
+
+/* منع قص زر إتمام الطلب */
+.cart-section > * {
+  max-width: 100%;
+}
+
+/* شريط تمرير أنيق */
+.products-section::-webkit-scrollbar,
+.cart-section::-webkit-scrollbar,
+.cart-items::-webkit-scrollbar {
+  width: 7px;
+}
+
+.products-section::-webkit-scrollbar-thumb,
+.cart-section::-webkit-scrollbar-thumb,
+.cart-items::-webkit-scrollbar-thumb {
+  background: #b77b4f;
+  border-radius: 20px;
+}
+
+.products-section::-webkit-scrollbar-track,
+.cart-section::-webkit-scrollbar-track,
+.cart-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* الشاشات الأصغر */
+@media (max-width: 1200px) {
+  body {
+    min-width: 0;
+  }
+
+  .main-layout {
+    height: calc(100vh - 110px);
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* الشاشات الصغيرة */
+@media (max-width: 850px) {
+  html,
+  body,
+  #root {
+    overflow: auto;
+  }
+
+  .main-layout {
+    height: auto;
+    overflow: visible;
+  }
+
+  .products-section,
+  .cart-section {
+    height: auto;
+    overflow: visible;
+  }
+}
+/* =========================================================
+   FIX CART FOOTER VISIBILITY
+========================================================= */
+
+.cart-section {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cart-items {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  max-height: 230px !important;
+  overflow-y: auto !important;
+  margin: 17px 0 10px !important;
+}
+
+.cart-footer {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  padding-bottom: 20px !important;
+}
+
+.order-options,
+.discount-options,
+.payment-options {
+  flex: 0 0 auto;
+}
+
+.summary {
+  flex: 0 0 auto;
+}
+
+.checkout-button {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+/* =========================================================
+   BARni POS - SCROLL FIX
+========================================================= */
+
+/* الصفحة نفسها قابلة للتمرير */
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  height: auto !important;
+  overflow: auto !important;
+}
+
+/* منطقة الكاشير */
+.main-layout {
+  height: auto !important;
+  min-height: calc(100vh - 100px) !important;
+  overflow: visible !important;
+}
+
+/* المنتجات */
+.products-section {
+  height: auto !important;
+  min-height: calc(100vh - 100px) !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+}
+
+/* شبكة المنتجات */
+.products-grid {
+  overflow: visible !important;
+  padding-bottom: 50px !important;
+}
+
+/* لوحة الطلب */
+.cart-section {
+  position: sticky !important;
+  top: 0 !important;
+  height: calc(100vh - 100px) !important;
+  max-height: calc(100vh - 100px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* محتوى الطلب */
+.cart-items {
+  overflow-y: visible !important;
+  max-height: none !important;
+}
+
+/* السماح لكل محتوى الطلب بالظهور */
+.cart-footer {
+  position: relative !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-bottom: 30px !important;
+}
+
+/* شريط التمرير */
+.cart-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cart-section::-webkit-scrollbar-thumb {
+  background: #b77b4f;
+  border-radius: 20px;
+}
+
+.cart-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* على الشاشات الصغيرة: الصفحة كلها تتمدد */
+@media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    overflow: auto !important;
+  }
+
+  .main-layout {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .products-section,
+  .cart-section {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
+  }
+}
