@@ -399,6 +399,29 @@ export default function CustomerPage({ showCashierButton = false }: CustomerPage
         return
       }
 
+      // إرسال إشعار واتساب تلقائيًا بعد نجاح إنشاء الطلب.
+      // لا نضع أسرار واتساب في المتصفح، بل نستدعي Edge Function آمنة.
+      try {
+        const { error: whatsappError } = await supabase.functions.invoke(
+          'send-order-whatsapp',
+          {
+            body: {
+              phone,
+              orderId,
+              total: Number.isFinite(finalTotal) ? finalTotal : total,
+              status: 'تم استلام الطلب',
+            },
+          },
+        )
+
+        if (whatsappError) {
+          console.error('WhatsApp notification failed:', whatsappError)
+          // فشل واتساب لا يلغي الطلب الذي تم إنشاؤه بنجاح.
+        }
+      } catch (whatsappError) {
+        console.error('WhatsApp notification exception:', whatsappError)
+      }
+
       setConfirmation({
         orderId,
         total: Number.isFinite(finalTotal) ? finalTotal : total,
@@ -506,6 +529,65 @@ export default function CustomerPage({ showCashierButton = false }: CustomerPage
 
       {!showSplash && !showOrderChoice && (
         <div className="barni-app">
+          <style>{`
+            .barni-home-button {
+              position: fixed;
+              top: 16px;
+              right: 24px;
+              z-index: 2000;
+
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+
+              padding: 10px 18px;
+
+              border: 1px solid #e7ddd1;
+              border-radius: 999px;
+
+              background: #3b241b;
+              color: #fff;
+
+              font-family: "Noto Kufi Arabic", Tahoma, Arial, sans-serif;
+              font-size: 14px;
+              font-weight: 700;
+
+              text-decoration: none;
+
+              box-shadow: 0 8px 22px rgba(59, 36, 27, 0.12);
+
+              transition:
+                transform 0.2s ease,
+                background 0.2s ease;
+            }
+
+            .barni-home-button:hover {
+              transform: translateY(-2px);
+              background: #4a2c21;
+            }
+
+            .barni-home-button:active {
+              transform: translateY(0);
+            }
+
+            @media (max-width: 600px) {
+              .barni-home-button {
+                top: 12px;
+                right: 12px;
+                padding: 8px 13px;
+                font-size: 12px;
+              }
+            }
+          `}</style>
+
+          <a
+            href="/"
+            className="barni-home-button"
+            aria-label="العودة إلى الصفحة الرئيسية"
+          >
+            ← الرئيسية
+          </a>
+
           <header className="barni-header">
             <div className="barni-header-inner">
               <button

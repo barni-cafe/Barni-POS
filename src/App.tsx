@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './App.css'
 import './CustomerPage.css'
+import './PublicSiteFont.css'
 import CustomerPage from './CustomerPage'
 import GiftOrdersPanel from './GiftOrdersPanel'
 import { supabase } from './supabase'
@@ -13,10 +14,73 @@ type Product = {
   category: string
   available: boolean
   stock: number
+  barcode?: string
 }
 
 type CartItem = Product & {
   quantity: number
+  lineId?: string
+  modifiers?: string[]
+  modifierTotal?: number
+}
+
+type ModifierOption = {
+  id: number
+  name: string
+  price: number
+}
+
+type Shift = {
+  id: number
+  openedAt: string
+  closedAt?: string
+  openingCash: number
+  closingCash?: number
+  expectedCash?: number
+  status: 'مفتوحة' | 'مغلقة'
+  openedBy: string
+}
+
+type Expense = {
+  id: number
+  createdAt: string
+  description: string
+  amount: number
+  paymentMethod: 'نقدي' | 'بطاقة'
+  createdBy: string
+}
+
+type SuspendedOrder = {
+  id: number
+  savedAt: string
+  cart: CartItem[]
+  orderType: string
+  tableNumber: string
+  paymentMethod: 'نقدي' | 'بطاقة'
+  discountCode: string
+  discountPercent: number
+}
+
+type ActivityLog = {
+  id: number
+  createdAt: string
+  user: string
+  action: string
+  details: string
+}
+
+type OfflineQueueItem = {
+  key: string
+  tempOrderId: number
+  createdAt: string
+  items: CartItem[]
+  orderType: string
+  tableNumber: string
+  paymentMethod: 'نقدي' | 'بطاقة'
+  discountCode: string
+  discountPercent: number
+  discountAmount: number
+  total: number
 }
 
 type Coupon = {
@@ -601,6 +665,42 @@ function BarniGiftPage() {
             : insertError.message || 'تعذر إرسال الهدية، حاول مرة ثانية.',
         )
         return
+      }
+
+      // إرسال رسالة WhatsApp للهدية فقط، بعد نجاح حفظ طلب الهدية.
+      try {
+        const whatsappMessage = [
+          `🎁 برني كافيه`,
+          `لديك هدية من ${cleanSenderName}`,
+          `الهدية: ${giftLabel}`,
+          fullMessage ? `رسالة: ${fullMessage}` : '',
+          `المستلم: ${cleanRecipientName}`,
+        ]
+          .filter(Boolean)
+          .join('\n')
+
+        const whatsappResponse = await fetch('http://localhost:3001/api/whatsapp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: cleanRecipientPhone,
+            message: whatsappMessage,
+          }),
+        })
+
+        if (!whatsappResponse.ok) {
+          const whatsappError = await whatsappResponse.json().catch(() => ({}))
+          console.error(
+            'Gift WhatsApp notification failed:',
+            whatsappError.error || 'Unknown error',
+          )
+        } else {
+          console.log('Gift WhatsApp notification sent successfully')
+        }
+      } catch (whatsappError) {
+        console.error('Gift WhatsApp notification error:', whatsappError)
       }
 
       setSuccess(true)
@@ -1548,14 +1648,143 @@ function BarniGiftPage() {
   )
 }
 
+
+function BarniCustomerDisplay() {
+  const [sale, setSale] = useState<{
+    items: Array<{ name: string; quantity: number; price: number }>
+    subtotal: number
+    discountAmount: number
+    total: number
+  } | null>(null)
+
+  useEffect(() => {
+    const readSale = () => {
+      const raw = localStorage.getItem('barni-current-sale')
+      if (!raw) {
+        setSale(null)
+        return
+      }
+      try {
+        setSale(JSON.parse(raw))
+      } catch {
+        setSale(null)
+      }
+    }
+
+    readSale()
+    const onStorage = () => readSale()
+    window.addEventListener('storage', onStorage)
+    const timer = window.setInterval(readSale, 700)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  return (
+    <div dir="rtl" style={{
+      minHeight: '100vh',
+      background: '#f6f0e7',
+      color: '#3b241b',
+      padding: '40px',
+      fontFamily: "'Cairo', Tahoma, Arial, sans-serif",
+    }}>
+      <div style={{
+        maxWidth: 1000,
+        margin: '0 auto',
+        background: '#fffdfa',
+        border: '1px solid #e7ddd1',
+        borderRadius: 30,
+        padding: 36,
+        boxShadow: '0 25px 70px rgba(59,36,27,.10)',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 26 }}>
+          <div style={{ fontSize: 56 }}>☕</div>
+          <h1 style={{ margin: 0, fontSize: 42 }}>برني كافيه</h1>
+          <p style={{ color: '#8d7668', marginTop: 8 }}>طلبك الحالي</p>
+        </div>
+
+        {!sale || sale.items.length === 0 ? (
+          <div style={{
+            minHeight: 360,
+            display: 'grid',
+            placeItems: 'center',
+            textAlign: 'center',
+            color: '#8d7668',
+          }}>
+            <div>
+              <div style={{ fontSize: 64, marginBottom: 10 }}>🛒</div>
+              <h2 style={{ color: '#3b241b' }}>بانتظار الطلب</h2>
+              <p>سيظهر الطلب هنا لحظة إضافته من نظام الكاشير.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {sale.items.map((item, index) => (
+                <div key={`${item.name}-${index}`} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 20,
+                  padding: '16px 18px',
+                  borderRadius: 16,
+                  background: '#f7efe6',
+                }}>
+                  <strong>{item.quantity} × {item.name}</strong>
+                  <strong>{(item.price * item.quantity).toFixed(2)} ر.ع</strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              marginTop: 26,
+              borderTop: '1px dashed #d8c7ba',
+              paddingTop: 20,
+              display: 'grid',
+              gap: 10,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>المجموع</span>
+                <strong>{sale.subtotal.toFixed(2)} ر.ع</strong>
+              </div>
+              {sale.discountAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9b3d32' }}>
+                  <span>الخصم</span>
+                  <strong>-{sale.discountAmount.toFixed(2)} ر.ع</strong>
+                </div>
+              )}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 30,
+                marginTop: 6,
+              }}>
+                <strong>الإجمالي</strong>
+                <strong>{sale.total.toFixed(2)} ر.ع</strong>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [currentPath, setCurrentPath] = useState<string>(
-    () => window.location.pathname || '/',
+    () =>
+      window.location.hash === '#display'
+        ? '/display'
+        : window.location.pathname || '/',
   )
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/')
+      setCurrentPath(
+        window.location.hash === '#display'
+          ? '/display'
+          : window.location.pathname || '/',
+      )
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -1987,6 +2216,7 @@ function App() {
     | 'gift-orders'
     | 'dashboard'
     | 'admin'
+    | 'operations'
   >('cashier')
 
   // =========================
@@ -2176,6 +2406,424 @@ function App() {
   const [newPrice, setNewPrice] = useState('')
   const [newStock, setNewStock] = useState('')
   const [newCategory, setNewCategory] = useState('قهوة')
+
+
+  // =========================
+  // الميزات الإضافية
+  // =========================
+  const [searchQuery, setSearchQuery] = useState('')
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine,
+  )
+  const [modifierCatalog, setModifierCatalog] = useState<ModifierOption[]>(() => {
+    const saved = localStorage.getItem('barni-modifiers')
+    if (!saved) {
+      return [
+        { id: 1, name: 'شوت إضافي', price: 0.3 },
+        { id: 2, name: 'حليب إضافي', price: 0.25 },
+        { id: 3, name: 'فانيلا', price: 0.25 },
+        { id: 4, name: 'كراميل', price: 0.3 },
+      ]
+    }
+    try {
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+  const [customizationProduct, setCustomizationProduct] = useState<Product | null>(null)
+  const [selectedModifiers, setSelectedModifiers] = useState<number[]>([])
+
+  const [suspendedOrders, setSuspendedOrders] = useState<SuspendedOrder[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('barni-suspended-orders') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [shifts, setShifts] = useState<Shift[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('barni-shifts') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('barni-expenses') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('barni-activity-logs') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('barni-offline-queue') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [newModifierName, setNewModifierName] = useState('')
+  const [newModifierPrice, setNewModifierPrice] = useState('')
+
+  const [newExpenseDescription, setNewExpenseDescription] = useState('')
+  const [newExpenseAmount, setNewExpenseAmount] = useState('')
+  const [newExpensePaymentMethod, setNewExpensePaymentMethod] =
+    useState<'نقدي' | 'بطاقة'>('نقدي')
+
+  const [openingCash, setOpeningCash] = useState('')
+  const [closingCash, setClosingCash] = useState('')
+
+  const [backupInputKey, setBackupInputKey] = useState(0)
+
+  const activeShift = shifts.find((shift) => shift.status === 'مفتوحة') ?? null
+
+  const persistFeatureState = () => {
+    localStorage.setItem('barni-modifiers', JSON.stringify(modifierCatalog))
+    localStorage.setItem('barni-suspended-orders', JSON.stringify(suspendedOrders))
+    localStorage.setItem('barni-shifts', JSON.stringify(shifts))
+    localStorage.setItem('barni-expenses', JSON.stringify(expenses))
+    localStorage.setItem('barni-activity-logs', JSON.stringify(activityLogs.slice(0, 500)))
+    localStorage.setItem('barni-offline-queue', JSON.stringify(offlineQueue))
+  }
+
+  useEffect(() => {
+    persistFeatureState()
+  }, [modifierCatalog, suspendedOrders, shifts, expenses, activityLogs, offlineQueue])
+
+  useEffect(() => {
+    const online = () => setIsOnline(true)
+    const offline = () => setIsOnline(false)
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => {
+      window.removeEventListener('online', online)
+      window.removeEventListener('offline', offline)
+    }
+  }, [])
+
+  const addActivity = (action: string, details: string) => {
+    const entry: ActivityLog = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      user: user?.name || user?.username || 'النظام',
+      action,
+      details,
+    }
+    setActivityLogs((current) => [entry, ...current].slice(0, 500))
+  }
+
+  const openShift = () => {
+    if (activeShift) {
+      notify('هناك وردية مفتوحة بالفعل', 'error')
+      return
+    }
+    const cash = Number(openingCash)
+    if (!Number.isFinite(cash) || cash < 0) {
+      notify('أدخل مبلغ افتتاح صحيح', 'error')
+      return
+    }
+    const shift: Shift = {
+      id: Date.now(),
+      openedAt: new Date().toISOString(),
+      openingCash: cash,
+      status: 'مفتوحة',
+      openedBy: user?.name || user?.username || 'المستخدم',
+    }
+    setShifts((current) => [shift, ...current])
+    setOpeningCash('')
+    addActivity('فتح وردية', `رصيد افتتاحي ${cash.toFixed(2)} ر.ع`)
+    notify('تم فتح الوردية', 'success')
+  }
+
+  const shiftCashSales = activeShift
+    ? orders
+        .filter(
+          (order) =>
+            order.paymentMethod === 'نقدي' &&
+            order.createdAtDate &&
+            new Date(order.createdAtDate) >= new Date(activeShift.openedAt),
+        )
+        .reduce((sum, order) => sum + order.total, 0)
+    : 0
+
+  const shiftCashExpenses = activeShift
+    ? expenses
+        .filter(
+          (expense) =>
+            expense.paymentMethod === 'نقدي' &&
+            new Date(expense.createdAt) >= new Date(activeShift.openedAt),
+        )
+        .reduce((sum, expense) => sum + expense.amount, 0)
+    : 0
+
+  const expectedCash = activeShift
+    ? activeShift.openingCash + shiftCashSales - shiftCashExpenses
+    : 0
+
+  const closeShift = () => {
+    if (!activeShift) {
+      notify('لا توجد وردية مفتوحة', 'error')
+      return
+    }
+    const cash = Number(closingCash)
+    if (!Number.isFinite(cash) || cash < 0) {
+      notify('أدخل المبلغ الفعلي عند الإغلاق', 'error')
+      return
+    }
+
+    const variance = cash - expectedCash
+    const closed = {
+      ...activeShift,
+      closedAt: new Date().toISOString(),
+      closingCash: cash,
+      expectedCash,
+      status: 'مغلقة' as const,
+    }
+
+    setShifts((current) =>
+      current.map((shift) => (shift.id === activeShift.id ? closed : shift)),
+    )
+    setClosingCash('')
+    addActivity(
+      'إغلاق وردية',
+      `المتوقع ${expectedCash.toFixed(2)} ر.ع، الفعلي ${cash.toFixed(2)} ر.ع، الفرق ${variance.toFixed(2)} ر.ع`,
+    )
+    notify(
+      variance === 0
+        ? 'تم إغلاق الوردية بدون فرق'
+        : `تم إغلاق الوردية. الفرق ${variance.toFixed(2)} ر.ع`,
+      variance === 0 ? 'success' : 'info',
+    )
+  }
+
+  const addExpense = () => {
+    const amount = Number(newExpenseAmount)
+    if (!newExpenseDescription.trim() || !Number.isFinite(amount) || amount <= 0) {
+      notify('أدخل وصف المصروف ومبلغًا صحيحًا', 'error')
+      return
+    }
+    const expense: Expense = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      description: newExpenseDescription.trim(),
+      amount,
+      paymentMethod: newExpensePaymentMethod,
+      createdBy: user?.name || user?.username || 'المستخدم',
+    }
+    setExpenses((current) => [expense, ...current])
+    addActivity('إضافة مصروف', `${expense.description} · ${expense.amount.toFixed(2)} ر.ع`)
+    setNewExpenseDescription('')
+    setNewExpenseAmount('')
+    notify('تم تسجيل المصروف', 'success')
+  }
+
+  const suspendCurrentOrder = () => {
+    if (!cart.length) {
+      notify('السلة فارغة', 'error')
+      return
+    }
+    const suspended: SuspendedOrder = {
+      id: Date.now(),
+      savedAt: new Date().toISOString(),
+      cart,
+      orderType,
+      tableNumber,
+      paymentMethod,
+      discountCode,
+      discountPercent,
+    }
+    setSuspendedOrders((current) => [suspended, ...current])
+    addActivity('تعليق طلب', `طلب مؤقت يحتوي ${cart.length} أصناف`)
+    clearCart()
+    removeDiscount()
+    notify('تم تعليق الطلب', 'success')
+  }
+
+  const resumeSuspendedOrder = (id: number) => {
+    const item = suspendedOrders.find((order) => order.id === id)
+    if (!item) return
+    setCart(item.cart)
+    setOrderType(item.orderType)
+    setTableNumber(item.tableNumber)
+    setPaymentMethod(item.paymentMethod)
+    setDiscountCode(item.discountCode)
+    setDiscountPercent(item.discountPercent)
+    setSuspendedOrders((current) => current.filter((order) => order.id !== id))
+    addActivity('استرجاع طلب معلق', `الطلب المؤقت #${id}`)
+    setPage('cashier')
+    notify('تم استرجاع الطلب', 'success')
+  }
+
+  const addModifier = () => {
+    const price = Number(newModifierPrice)
+    if (!newModifierName.trim() || !Number.isFinite(price) || price < 0) {
+      notify('أدخل اسم الإضافة وسعرًا صحيحًا', 'error')
+      return
+    }
+    const modifier: ModifierOption = {
+      id: Date.now(),
+      name: newModifierName.trim(),
+      price,
+    }
+    setModifierCatalog((current) => [...current, modifier])
+    setNewModifierName('')
+    setNewModifierPrice('')
+    addActivity('إضافة تعديل للمنتجات', `${modifier.name} · ${price.toFixed(2)} ر.ع`)
+    notify('تمت إضافة الإضافة', 'success')
+  }
+
+  const deleteModifier = (id: number) => {
+    const target = modifierCatalog.find((item) => item.id === id)
+    if (!target) return
+    setModifierCatalog((current) => current.filter((item) => item.id !== id))
+    addActivity('حذف إضافة', target.name)
+  }
+
+  const openCustomizer = (product: Product) => {
+    if (!modifierCatalog.length) {
+      addToCart(product)
+      return
+    }
+    setCustomizationProduct(product)
+    setSelectedModifiers([])
+  }
+
+  const addCustomizedProduct = () => {
+    if (!customizationProduct) return
+
+    const selected = modifierCatalog.filter((modifier) =>
+      selectedModifiers.includes(modifier.id),
+    )
+    const modifierTotal = selected.reduce((sum, modifier) => sum + modifier.price, 0)
+    const modifierNames = selected.map((modifier) => modifier.name)
+    const displayName = modifierNames.length
+      ? `${customizationProduct.name} · ${modifierNames.join(' + ')}`
+      : customizationProduct.name
+
+    const lineId = `${customizationProduct.id}-${Date.now()}`
+    setCart((current) => [
+      ...current,
+      {
+        ...customizationProduct,
+        name: displayName,
+        price: customizationProduct.price + modifierTotal,
+        lineId,
+        modifiers: modifierNames,
+        modifierTotal,
+        quantity: 1,
+      },
+    ])
+
+    addActivity('إضافة منتج للطلب', displayName)
+    setCustomizationProduct(null)
+    setSelectedModifiers([])
+  }
+
+  const addBarcode = (value: string, product: Product) => {
+    const clean = value.trim()
+    if (!clean) return
+    const mappings = JSON.parse(localStorage.getItem('barni-product-barcodes') || '{}')
+    mappings[String(product.id)] = clean
+    localStorage.setItem('barni-product-barcodes', JSON.stringify(mappings))
+    notify(`تم ربط الباركود بـ ${product.name}`, 'success')
+  }
+
+  const findProductByBarcode = (value: string) => {
+    const clean = value.trim()
+    if (!clean) return null
+    const mappings = JSON.parse(localStorage.getItem('barni-product-barcodes') || '{}')
+    const entry = products.find((product) => String(mappings[String(product.id)] || '') === clean)
+    return entry ?? products.find((product) => product.barcode === clean) ?? null
+  }
+
+  const handleBarcodeScan = () => {
+    const product = findProductByBarcode(barcodeInput)
+    if (!product) {
+      notify('لم يتم العثور على المنتج بهذا الباركود', 'error')
+      return
+    }
+    if (!product.available) {
+      notify('المنتج غير متوفر', 'error')
+      return
+    }
+    openCustomizer(product)
+    setBarcodeInput('')
+  }
+
+  const downloadBackup = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      products,
+      orders,
+      coupons,
+      suspendedOrders,
+      shifts,
+      expenses,
+      activityLogs,
+      modifierCatalog,
+      offlineQueue,
+      customerBaseUrl,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `barni-pos-backup-${new Date().toISOString().slice(0,10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    addActivity('نسخة احتياطية', 'تم تصدير بيانات النظام')
+    notify('تم إنشاء النسخة الاحتياطية', 'success')
+  }
+
+  const restoreBackup = async (file: File) => {
+    try {
+      const raw = await file.text()
+      const payload = JSON.parse(raw)
+
+      if (!payload || typeof payload !== 'object') throw new Error('invalid')
+
+      if (Array.isArray(payload.products)) setProducts(payload.products)
+      if (Array.isArray(payload.orders)) setOrders(payload.orders)
+      if (Array.isArray(payload.coupons)) setCoupons(payload.coupons)
+      if (Array.isArray(payload.suspendedOrders)) setSuspendedOrders(payload.suspendedOrders)
+      if (Array.isArray(payload.shifts)) setShifts(payload.shifts)
+      if (Array.isArray(payload.expenses)) setExpenses(payload.expenses)
+      if (Array.isArray(payload.activityLogs)) setActivityLogs(payload.activityLogs)
+      if (Array.isArray(payload.modifierCatalog)) setModifierCatalog(payload.modifierCatalog)
+      if (Array.isArray(payload.offlineQueue)) setOfflineQueue(payload.offlineQueue)
+      if (typeof payload.customerBaseUrl === 'string') saveCustomerBaseUrl(payload.customerBaseUrl)
+
+      addActivity('استرجاع نسخة احتياطية', 'تم استرجاع بيانات محفوظة')
+      notify('تم استرجاع النسخة الاحتياطية', 'success')
+      setBackupInputKey((value) => value + 1)
+    } catch {
+      notify('الملف غير صالح أو تالف', 'error')
+    }
+  }
+
+  const openCustomerDisplay = () => {
+    const displayUrl = `${window.location.href.split('#')[0]}#display`
+    window.open(
+      displayUrl,
+      'barni-customer-display',
+      'width=1000,height=700',
+    )
+  }
 
   // =========================
   // QR الطاولات
@@ -2492,7 +3140,8 @@ function App() {
       | 'orders'
       | 'gift-orders'
       | 'dashboard'
-      | 'admin',
+      | 'admin'
+      | 'operations',
   ) => {
     if (!user) return false
     if (user.role === 'admin') return true
@@ -2500,7 +3149,8 @@ function App() {
       return (
         target === 'cashier' ||
         target === 'orders' ||
-        target === 'gift-orders'
+        target === 'gift-orders' ||
+        target === 'operations'
       )
     }
     return target === 'kitchen'
@@ -2522,15 +3172,20 @@ function App() {
   // السلة
   // =========================
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product | CartItem) => {
     if (!product.available || product.stock <= 0) {
       notify('هذا المنتج غير متوفر')
       return
     }
 
+    const productLineId =
+      'lineId' in product ? product.lineId : undefined
+
     setCart((currentCart) => {
-      const existing = currentCart.find(
-        (item) => item.id === product.id,
+      const existing = currentCart.find((item) =>
+        productLineId
+          ? item.lineId === productLineId
+          : item.id === product.id && !item.lineId,
       )
 
       if (existing) {
@@ -2559,11 +3214,11 @@ function App() {
     })
   }
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (key: number | string) => {
     setCart((currentCart) =>
       currentCart
         .map((item) =>
-          item.id === id
+          item.id === key || item.lineId === key
             ? {
                 ...item,
                 quantity: item.quantity - 1,
@@ -2590,17 +3245,36 @@ function App() {
 
   const total = subtotal - discountAmount
 
+  useEffect(() => {
+    localStorage.setItem(
+      'barni-current-sale',
+      JSON.stringify({
+        items: cart.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal,
+        discountAmount,
+        total,
+      }),
+    )
+  }, [cart, subtotal, discountAmount, total])
+
   // =========================
   // المنتجات
   // =========================
 
-  const filteredProducts =
-    selectedCategory === 'الكل'
-      ? products
-      : products.filter(
-          (product) =>
-            product.category === selectedCategory,
-        )
+  const filteredProducts = products.filter((product) => {
+    const categoryMatch =
+      selectedCategory === 'الكل' || product.category === selectedCategory
+    const query = searchQuery.trim().toLowerCase()
+    const textMatch =
+      !query ||
+      product.name.toLowerCase().includes(query) ||
+      product.category.toLowerCase().includes(query)
+    return categoryMatch && textMatch
+  })
 
   // =========================
   // الخصم
@@ -2641,6 +3315,127 @@ function App() {
   // إتمام الطلب
   // =========================
 
+  const saveOfflineOrder = () => {
+    const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const tempOrderId = -Date.now()
+    const queueItem: OfflineQueueItem = {
+      key,
+      tempOrderId,
+      createdAt: new Date().toISOString(),
+      items: cart,
+      orderType,
+      tableNumber,
+      paymentMethod,
+      discountCode,
+      discountPercent,
+      discountAmount,
+      total,
+    }
+    setOfflineQueue((current) => [...current, queueItem])
+    const localOrder: Order = {
+      id: tempOrderId,
+      items: cart,
+      type: orderType,
+      table: tableNumber,
+      paymentMethod,
+      discountCode,
+      discountPercent,
+      discountAmount,
+      total,
+      status: 'جديد',
+      createdAt: new Date().toLocaleTimeString('ar-OM'),
+      createdAtDate: queueItem.createdAt,
+    }
+    setOrders((current) => [localOrder, ...current])
+    setProducts((currentProducts) =>
+      currentProducts.map((product) => {
+        const orderedQuantity = cart
+          .filter((item) => item.id === product.id)
+          .reduce((sum, item) => sum + item.quantity, 0)
+        if (!orderedQuantity) return product
+        const stock = Math.max(0, product.stock - orderedQuantity)
+        return { ...product, stock, available: stock > 0 }
+      }),
+    )
+    addActivity('طلب محلي بدون إنترنت', `تم حفظ الطلب محليًا بمبلغ ${total.toFixed(2)} ر.ع`)
+    notify('لا يوجد اتصال. تم حفظ الطلب محليًا وسيتم مزامنته لاحقًا.', 'info')
+    setReceiptOrder(localOrder)
+    removeDiscount()
+    clearCart()
+  }
+
+  const syncOfflineOrders = async () => {
+    if (!isOnline || offlineQueue.length === 0) return
+    const remaining: OfflineQueueItem[] = []
+
+    for (const queued of offlineQueue) {
+      try {
+        const { data, error } = await supabase.rpc('place_barni_order', {
+          p_items: queued.items.map(({ id, name, category, price, quantity }) => ({
+            id, name, category, price, quantity,
+          })),
+          p_type: queued.orderType,
+          p_table: queued.tableNumber,
+          p_phone: '',
+          p_payment_method: queued.paymentMethod,
+          p_discount_code: queued.discountPercent > 0 ? queued.discountCode : '',
+        })
+
+        if (error) {
+          remaining.push(queued)
+          continue
+        }
+
+        const orderId = Number(data?.id)
+        const { data: savedOrder } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .maybeSingle()
+
+        const syncedOrder = savedOrder
+          ? normalizeOrder({
+              ...savedOrder,
+              items:
+                Array.isArray(savedOrder.items) && savedOrder.items.length > 0
+                  ? savedOrder.items
+                  : queued.items,
+            })
+          : {
+              id: orderId,
+              items: queued.items,
+              type: queued.orderType,
+              table: queued.tableNumber,
+              paymentMethod: queued.paymentMethod,
+              discountCode: queued.discountCode,
+              discountPercent: queued.discountPercent,
+              discountAmount: queued.discountAmount,
+              total: queued.total,
+              status: 'جديد' as const,
+              createdAt: new Date().toLocaleTimeString('ar-OM'),
+              createdAtDate: queued.createdAt,
+            }
+
+        setOrders((current) => [
+          syncedOrder,
+          ...current.filter((order) => order.id !== syncedOrder.id && order.id !== queued.tempOrderId),
+        ])
+      } catch {
+        remaining.push(queued)
+      }
+    }
+
+    setOfflineQueue(remaining)
+    if (remaining.length === 0) {
+      addActivity('مزامنة الطلبات', 'تمت مزامنة الطلبات المحفوظة بدون إنترنت')
+      notify('تمت مزامنة الطلبات المؤجلة', 'success')
+    }
+  }
+
+  useEffect(() => {
+    void syncOfflineOrders()
+  }, [isOnline])
+
   const completeOrder = async () => {
     if (cart.length === 0) return
 
@@ -2649,12 +3444,28 @@ function App() {
       return
     }
 
-    for (const item of cart) {
-      const product = products.find((product) => product.id === item.id)
-      if (!product || product.stock < item.quantity) {
-        notify(`الكمية غير كافية من ${item.name}`, 'error')
+    const requiredByProduct = new Map<number, number>()
+    cart.forEach((item) => {
+      requiredByProduct.set(
+        item.id,
+        (requiredByProduct.get(item.id) || 0) + item.quantity,
+      )
+    })
+
+    for (const [productId, required] of requiredByProduct) {
+      const product = products.find((item) => item.id === productId)
+      if (!product || product.stock < required) {
+        notify(
+          `الكمية غير كافية من ${product?.name || 'المنتج'}`,
+          'error',
+        )
         return
       }
+    }
+
+    if (!isOnline) {
+      saveOfflineOrder()
+      return
     }
 
     const { data, error } = await supabase.rpc('place_barni_order', {
@@ -2670,7 +3481,7 @@ function App() {
 
     if (error) {
       console.error('Cashier order error:', error)
-      notify(error.message || 'تعذر حفظ الطلب', 'error')
+      saveOfflineOrder()
       return
     }
 
@@ -2707,13 +3518,16 @@ function App() {
 
     setOrders((currentOrders) => [newOrder, ...currentOrders.filter((order) => order.id !== newOrder.id)])
     setProducts((currentProducts) => currentProducts.map((product) => {
-      const ordered = cart.find((item) => item.id === product.id)
-      if (!ordered) return product
-      const stock = Math.max(0, product.stock - ordered.quantity)
+      const orderedQuantity = cart
+        .filter((item) => item.id === product.id)
+        .reduce((sum, item) => sum + item.quantity, 0)
+      if (!orderedQuantity) return product
+      const stock = Math.max(0, product.stock - orderedQuantity)
       return { ...product, stock, available: stock > 0 }
     }))
 
-    notify(`تم إنشاء الطلب #${orderId}`, 'success')
+    addActivity('إنشاء طلب', `الطلب #${orderId} بقيمة ${newOrder.total.toFixed(2)} ر.ع`)
+
     setReceiptOrder(newOrder)
     removeDiscount()
     clearCart()
@@ -3276,7 +4090,19 @@ function App() {
   }
 
   if (currentPath === '/gift') {
-    return <BarniGiftPage />
+    return (
+      <div className="barni-public-site">
+        <BarniGiftPage />
+      </div>
+    )
+  }
+
+  if (currentPath === '/display') {
+    return (
+      <div className="barni-public-site">
+        <BarniCustomerDisplay />
+      </div>
+    )
   }
 
   if (authLoading && currentPath !== '/customer') {
@@ -3292,7 +4118,11 @@ function App() {
   }
 
   if (currentPath === '/customer') {
-    return <CustomerPage showCashierButton={Boolean(user) && new URLSearchParams(window.location.search).get('staff') === '1'} />
+    return (
+      <div className="barni-public-site">
+        <CustomerPage showCashierButton={Boolean(user) && new URLSearchParams(window.location.search).get('staff') === '1'} />
+      </div>
+    )
   }
 
   if (!user) {
@@ -3485,6 +4315,16 @@ function App() {
 
           {canAccess('cashier') && (
             <button
+              type="button"
+              onClick={openCustomerDisplay}
+              title="فتح شاشة العميل"
+            >
+              شاشة العميل
+            </button>
+          )}
+
+          {canAccess('cashier') && (
+            <button
               className={
                 page === 'cashier'
                   ? 'nav-active'
@@ -3600,6 +4440,15 @@ function App() {
             </button>
           )}
 
+          {canAccess('operations') && (
+            <button
+              className={page === 'operations' ? 'nav-active' : ''}
+              onClick={() => setPage('operations')}
+            >
+              التشغيل
+            </button>
+          )}
+
           {canAccess('admin') && (
             <button
               className={
@@ -3652,6 +4501,69 @@ function App() {
 
           <section className="products-section">
 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: 10,
+              marginBottom: 16,
+            }}>
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="🔎 ابحث عن منتج..."
+                style={{
+                  width: '100%',
+                  border: '1px solid #dfd1c7',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  background: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const product = findProductByBarcode(barcodeInput)
+                  if (product) {
+                    openCustomizer(product)
+                    setBarcodeInput('')
+                  } else {
+                    notify('أدخل باركودًا صحيحًا', 'error')
+                  }
+                }}
+              >
+                باركود
+              </button>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: 10,
+              marginBottom: 16,
+            }}>
+              <input
+                value={barcodeInput}
+                onChange={(event) => setBarcodeInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleBarcodeScan()
+                }}
+                placeholder="امسح الباركود هنا"
+                inputMode="numeric"
+                style={{
+                  width: '100%',
+                  border: '1px solid #dfd1c7',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  background: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button type="button" onClick={handleBarcodeScan}>
+                بحث
+              </button>
+            </div>
+
             <div className="section-title">
               <h2>المنتجات</h2>
 
@@ -3689,7 +4601,7 @@ function App() {
                     }`}
                     key={product.id}
                     onClick={() =>
-                      addToCart(product)
+                      openCustomizer(product)
                     }
                     disabled={
                       !product.available
@@ -3768,7 +4680,7 @@ function App() {
                 cart.map((item) => (
                   <div
                     className="cart-item"
-                    key={item.id}
+                    key={item.lineId ?? item.id}
                   >
 
                     <div>
@@ -3976,6 +4888,44 @@ function App() {
                   </strong>
                 </div>
 
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                marginBottom: 10,
+              }}>
+                <button
+                  type="button"
+                  onClick={suspendCurrentOrder}
+                  disabled={cart.length === 0}
+                  style={{
+                    border: '1px solid #d8c7ba',
+                    background: '#fff',
+                    color: '#4e3d34',
+                    borderRadius: 12,
+                    padding: '12px',
+                    fontWeight: 800,
+                    cursor: cart.length ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  ⏸️ تعليق الطلب
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage('operations')}
+                  style={{
+                    border: '1px solid #d8c7ba',
+                    background: '#fff',
+                    color: '#4e3d34',
+                    borderRadius: 12,
+                    padding: '12px',
+                    fontWeight: 800,
+                  }}
+                >
+                  📂 الطلبات المعلقة
+                </button>
               </div>
 
               <button
@@ -4675,6 +5625,339 @@ function App() {
               )}
             </section>
           </div>
+        </main>
+      )}
+
+      {/* =========================
+          التشغيل
+      ========================= */}
+      {page === 'operations' && (
+        <main style={{
+          padding: 30,
+          maxWidth: 1400,
+          margin: '0 auto',
+          width: '100%',
+          display: 'grid',
+          gap: 20,
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <h2 style={{ margin: 0 }}>التشغيل والمراقبة</h2>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                الورديات والمصروفات والطلبات المعلقة والنسخ الاحتياطية وسجل النشاط.
+              </p>
+            </div>
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: 999,
+              background: isOnline ? '#e7f5e9' : '#fff0ee',
+              color: isOnline ? '#28743a' : '#9b3d32',
+              fontWeight: 900,
+            }}>
+              {isOnline ? '● متصل' : '● بدون إنترنت'} · {offlineQueue.length} طلبات مؤجلة
+            </div>
+          </div>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>💰 الورديات</h3>
+                <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                  رصيد البداية، مبيعات النقد، المصروفات، والفرق عند الإغلاق.
+                </p>
+              </div>
+              <strong>{activeShift ? 'وردية مفتوحة' : 'لا توجد وردية مفتوحة'}</strong>
+            </div>
+
+            {!activeShift ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={openingCash}
+                  onChange={(event) => setOpeningCash(event.target.value)}
+                  placeholder="المبلغ الافتتاحي"
+                />
+                <button type="button" onClick={openShift}>فتح وردية</button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+                  gap: 10,
+                }}>
+                  <div style={{ background: '#f7f2ee', padding: 14, borderRadius: 12 }}>
+                    <small>الرصيد الافتتاحي</small>
+                    <strong style={{ display: 'block', fontSize: 20 }}>{activeShift.openingCash.toFixed(2)} ر.ع</strong>
+                  </div>
+                  <div style={{ background: '#f7f2ee', padding: 14, borderRadius: 12 }}>
+                    <small>مبيعات النقد</small>
+                    <strong style={{ display: 'block', fontSize: 20 }}>{shiftCashSales.toFixed(2)} ر.ع</strong>
+                  </div>
+                  <div style={{ background: '#f7f2ee', padding: 14, borderRadius: 12 }}>
+                    <small>مصروفات النقد</small>
+                    <strong style={{ display: 'block', fontSize: 20 }}>{shiftCashExpenses.toFixed(2)} ر.ع</strong>
+                  </div>
+                  <div style={{ background: '#f7f2ee', padding: 14, borderRadius: 12 }}>
+                    <small>المتوقع</small>
+                    <strong style={{ display: 'block', fontSize: 20 }}>{expectedCash.toFixed(2)} ر.ع</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={closingCash}
+                    onChange={(event) => setClosingCash(event.target.value)}
+                    placeholder="المبلغ الفعلي في الصندوق"
+                  />
+                  <button type="button" onClick={closeShift}>إغلاق الوردية</button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div>
+              <h3 style={{ margin: 0 }}>💸 المصروفات</h3>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                سجل أي مصروف لتظهر قيمته في صافي المبيعات والوردية.
+              </p>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.5fr 1fr 1fr auto',
+              gap: 10,
+            }}>
+              <input
+                value={newExpenseDescription}
+                onChange={(event) => setNewExpenseDescription(event.target.value)}
+                placeholder="وصف المصروف"
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={newExpenseAmount}
+                onChange={(event) => setNewExpenseAmount(event.target.value)}
+                placeholder="المبلغ"
+              />
+              <select
+                value={newExpensePaymentMethod}
+                onChange={(event) => setNewExpensePaymentMethod(event.target.value as 'نقدي' | 'بطاقة')}
+              >
+                <option value="نقدي">نقدي</option>
+                <option value="بطاقة">بطاقة</option>
+              </select>
+              <button type="button" onClick={addExpense}>إضافة</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {expenses.slice(0, 8).map((expense) => (
+                <div key={expense.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#f7f2ee',
+                }}>
+                  <span>{expense.description} · {expense.paymentMethod}</span>
+                  <strong>{expense.amount.toFixed(2)} ر.ع</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div>
+              <h3 style={{ margin: 0 }}>⏸️ الطلبات المعلقة</h3>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                احفظ طلبًا مؤقتًا ثم استرجعه لاحقًا دون فقدان محتوياته.
+              </p>
+            </div>
+
+            {suspendedOrders.length === 0 ? (
+              <div style={{ color: '#806d60' }}>لا توجد طلبات معلقة.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {suspendedOrders.map((item) => (
+                  <div key={item.id} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: '#f7f2ee',
+                  }}>
+                    <div>
+                      <strong>طلب مؤقت #{item.id}</strong>
+                      <div style={{ color: '#806d60', marginTop: 4 }}>
+                        {item.cart.reduce((sum, line) => sum + line.quantity, 0)} أصناف · {new Date(item.savedAt).toLocaleTimeString('ar-OM')}
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => resumeSuspendedOrder(item.id)}>
+                      استرجاع
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div>
+              <h3 style={{ margin: 0 }}>➕ إضافات المنتجات</h3>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                تظهر الإضافات عند إضافة أي منتج للسلة.
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.5fr 1fr auto',
+              gap: 10,
+            }}>
+              <input
+                value={newModifierName}
+                onChange={(event) => setNewModifierName(event.target.value)}
+                placeholder="مثال: شوت إضافي"
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.05"
+                value={newModifierPrice}
+                onChange={(event) => setNewModifierPrice(event.target.value)}
+                placeholder="السعر"
+              />
+              <button type="button" onClick={addModifier}>إضافة</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {modifierCatalog.map((modifier) => (
+                <div key={modifier.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 12px',
+                  background: '#f7f2ee',
+                  borderRadius: 10,
+                }}>
+                  <span>{modifier.name}</span>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <strong>{modifier.price.toFixed(2)} ر.ع</strong>
+                    <button type="button" onClick={() => deleteModifier(modifier.id)}>حذف</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div>
+              <h3 style={{ margin: 0 }}>🧾 النسخ الاحتياطي والاسترجاع</h3>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                خذ نسخة من بيانات النظام محليًا قبل أي تحديث كبير.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button type="button" onClick={downloadBackup}>⬇️ تصدير نسخة احتياطية</button>
+              <input
+                key={backupInputKey}
+                type="file"
+                accept=".json,application/json"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void restoreBackup(file)
+                }}
+              />
+            </div>
+          </section>
+
+          <section style={{
+            background: '#fff',
+            border: '1px solid #eadfd8',
+            borderRadius: 18,
+            padding: 22,
+            display: 'grid',
+            gap: 16,
+          }}>
+            <div>
+              <h3 style={{ margin: 0 }}>📝 سجل النشاط</h3>
+              <p style={{ margin: '6px 0 0', color: '#806d60' }}>
+                كل العمليات الإدارية المهمة تُسجل هنا.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {activityLogs.slice(0, 12).map((log) => (
+                <div key={log.id} style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  background: '#f7f2ee',
+                }}>
+                  <strong>{log.action}</strong>
+                  <div style={{ color: '#806d60', marginTop: 4 }}>
+                    {log.details}
+                  </div>
+                  <small style={{ color: '#a28e82' }}>
+                    {log.user} · {new Date(log.createdAt).toLocaleString('ar-OM')}
+                  </small>
+                </div>
+              ))}
+              {activityLogs.length === 0 && (
+                <div style={{ color: '#806d60' }}>لا توجد عمليات مسجلة بعد.</div>
+              )}
+            </div>
+          </section>
         </main>
       )}
 
@@ -5537,6 +6820,27 @@ function App() {
                       </button>
 
                       <button
+                        onClick={() => {
+                          const value = window.prompt(
+                            `أدخل باركود ${product.name}`,
+                            (() => {
+                              try {
+                                const mappings = JSON.parse(
+                                  localStorage.getItem('barni-product-barcodes') || '{}',
+                                )
+                                return String(mappings[String(product.id)] || '')
+                              } catch {
+                                return ''
+                              }
+                            })(),
+                          )
+                          if (value !== null) addBarcode(value, product)
+                        }}
+                      >
+                        باركود
+                      </button>
+
+                      <button
                         className="delete-product"
                         onClick={() =>
                           deleteProduct(
@@ -5559,6 +6863,87 @@ function App() {
           </section>
 
         </main>
+      )}
+
+      {customizationProduct && (
+        <div
+          className="receipt-overlay"
+          onClick={() => setCustomizationProduct(null)}
+        >
+          <div
+            className="receipt-modal"
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: 'min(560px, calc(100% - 30px))' }}
+          >
+            <div className="receipt-paper">
+              <div className="receipt-header">
+                <h2>{customizationProduct.name}</h2>
+                <p>اختر الإضافات</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+                {modifierCatalog.map((modifier) => (
+                  <label
+                    key={modifier.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 14,
+                      border: '1px solid #e7ddd1',
+                      borderRadius: 12,
+                      background: selectedModifiers.includes(modifier.id) ? '#fff7ed' : '#fff',
+                    }}
+                  >
+                    <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedModifiers.includes(modifier.id)}
+                        onChange={(event) => {
+                          setSelectedModifiers((current) =>
+                            event.target.checked
+                              ? [...current, modifier.id]
+                              : current.filter((id) => id !== modifier.id),
+                          )
+                        }}
+                      />
+                      <strong>{modifier.name}</strong>
+                    </span>
+                    <span>{modifier.price.toFixed(2)} ر.ع</span>
+                  </label>
+                ))}
+              </div>
+
+              <div style={{
+                marginTop: 18,
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                fontSize: 20,
+              }}>
+                <strong>السعر</strong>
+                <strong>
+                  {(
+                    customizationProduct.price +
+                    modifierCatalog
+                      .filter((modifier) => selectedModifiers.includes(modifier.id))
+                      .reduce((sum, modifier) => sum + modifier.price, 0)
+                  ).toFixed(2)} ر.ع
+                </strong>
+              </div>
+            </div>
+
+            <div className="receipt-actions">
+              <button className="print-receipt-button" onClick={addCustomizedProduct}>
+                إضافة للسلة
+              </button>
+              <button className="close-receipt-button" onClick={() => setCustomizationProduct(null)}>
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {receiptOrder && (

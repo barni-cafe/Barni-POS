@@ -1,10 +1,47 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import './PublicSiteFont.css'
 
-createRoot(document.getElementById('root')!).render(
+import PublicHomePage from './PublicHomePage'
+
+const App = lazy(() => import('./App.tsx'))
+
+const root = document.getElementById('root')
+
+if (!root) {
+  throw new Error('Root element not found')
+}
+
+const currentPath = window.location.pathname || '/'
+
+createRoot(root).render(
   <StrictMode>
-    <App />
+    {currentPath === '/' ? (
+      <PublicHomePage />
+    ) : (
+      <Suspense
+        fallback={
+          <div
+            dir="rtl"
+            style={{
+              minHeight: '100vh',
+              display: 'grid',
+              placeItems: 'center',
+              background: '#f6f0e7',
+              color: '#3b241b',
+              fontFamily:
+                '"Noto Kufi Arabic", Tahoma, Arial, sans-serif',
+              fontSize: '18px',
+              fontWeight: 800,
+            }}
+          >
+            جاري تحميل برني...
+          </div>
+        }
+      >
+        <App />
+      </Suspense>
+    )}
   </StrictMode>,
 )
