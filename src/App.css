@@ -980,3 +980,43 @@ body,
   }
 }
 
+
+/* ---------- DELIVERY ---------- */
+.delivery-page{width:100%;max-width:1450px;margin:auto;padding:40px;direction:rtl}
+.delivery-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
+.delivery-heading h2{margin:0 0 5px;font-family:'Playfair Display',serif;font-size:32px;color:var(--espresso)}
+.delivery-heading p{margin:0;color:var(--muted);font-size:12px}
+.delivery-count{padding:10px 14px;border-radius:999px;background:var(--espresso);color:#fff;font-size:11px;font-weight:800}
+.delivery-form-card,.delivery-list-card{border:1px solid var(--line);border-radius:20px;background:#fffdfb;box-shadow:var(--shadow-soft);padding:22px;margin-bottom:20px}
+.delivery-form-card h3,.delivery-list-card h3{margin:0 0 5px;color:var(--espresso)}
+.delivery-form-card p,.delivery-list-card p{margin:0;color:var(--muted);font-size:12px}
+.delivery-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:18px}
+.delivery-form-grid label{display:grid;gap:7px;color:var(--coffee);font-size:12px;font-weight:800}
+.delivery-form-grid label.full{grid-column:1/-1}
+.delivery-form-grid input,.delivery-form-grid textarea,.delivery-form-grid select{width:100%;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);padding:11px 12px;outline:none}
+.delivery-form-grid textarea{min-height:90px;resize:vertical}
+.delivery-primary-button{margin-top:15px;min-height:46px;padding:0 22px;border:0;border-radius:11px;background:var(--espresso);color:#fff;font-weight:900}
+.delivery-orders-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:18px}
+.delivery-order-card{border:1px solid var(--line);border-radius:17px;background:#fff;padding:17px}
+.delivery-order-top,.delivery-order-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.delivery-order-top strong{display:block;color:var(--espresso)}
+.delivery-order-top small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.delivery-status{padding:7px 10px;border-radius:999px;background:var(--cream-2);color:var(--coffee);font-size:10px;font-weight:900;white-space:nowrap}
+.delivery-order-info{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.delivery-order-info span{padding:7px 9px;border-radius:8px;background:var(--cream);color:var(--coffee);font-size:10px}
+.delivery-order-details{padding:12px;border-radius:10px;background:#f8f3ee;color:var(--ink);font-size:12px;line-height:1.7;margin-bottom:14px}
+.delivery-order-bottom strong{color:var(--caramel);font-size:18px}
+.delivery-order-bottom select{min-width:150px;border:1px solid var(--line);border-radius:9px;padding:8px;background:#fff}
+.delivery-delete-button{border:0;border-radius:9px;padding:8px 11px;background:#f4dfdc;color:#9b3d32;font-weight:800}
+.delivery-empty{padding:55px 20px;text-align:center;color:var(--muted)}
+.delivery-empty>div{font-size:42px}
+.delivery-empty h3{margin:10px 0 5px;color:var(--espresso)}
+.admin-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.admin-menu-grid button{min-height:155px;padding:22px;border:1px solid var(--line);border-radius:20px;background:#fffdfb;color:var(--ink);text-align:right;box-shadow:var(--shadow-soft);transition:.2s}
+.admin-menu-grid button:hover{transform:translateY(-3px);border-color:rgba(183,123,79,.35);box-shadow:var(--shadow)}
+.admin-menu-grid button>span{display:block;font-size:28px;margin-bottom:12px}
+.admin-menu-grid button strong{display:block;color:var(--espresso);font-size:16px}
+.admin-menu-grid button small{display:block;margin-top:5px;color:var(--muted);line-height:1.7}
+.admin-back-button{margin-bottom:18px;padding:9px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--coffee);font-weight:800}
+@media (max-width:900px){.delivery-page{padding:25px 18px}.delivery-orders-grid,.admin-menu-grid{grid-template-columns:1fr}}
+@media (max-width:650px){.delivery-form-grid{grid-template-columns:1fr}.delivery-form-grid label.full{grid-column:auto}.delivery-order-bottom{flex-wrap:wrap}.delivery-order-bottom select{flex:1;min-width:140px}}

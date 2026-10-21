@@ -100,6 +100,19 @@ type User = {
   role: Role
 }
 
+type DeliveryOrder = {
+  id: number
+  customerName: string
+  phone: string
+  address: string
+  orderDetails: string
+  total: number
+  paymentMethod: 'نقدي' | 'بطاقة'
+  courier: string
+  status: 'جديد' | 'قيد التجهيز' | 'جاهز للتوصيل' | 'خرج للتوصيل' | 'تم التوصيل'
+  createdAt: string
+}
+
 type Order = {
   id: number
   items: CartItem[]
@@ -2213,11 +2226,108 @@ function App() {
     | 'cashier'
     | 'kitchen'
     | 'orders'
+    | 'delivery'
     | 'gift-orders'
     | 'dashboard'
     | 'admin'
     | 'operations'
   >('cashier')
+
+  const [adminSection, setAdminSection] = useState<
+    'home' | 'products' | 'sales' | 'operations' | 'kitchen' | 'customer' | 'display'
+  >('home')
+
+  const [deliveryOrders, setDeliveryOrders] = useState<DeliveryOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem('barni-delivery-orders')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  const [deliveryCustomerName, setDeliveryCustomerName] = useState('')
+  const [deliveryPhone, setDeliveryPhone] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [deliveryDetails, setDeliveryDetails] = useState('')
+  const [deliveryTotal, setDeliveryTotal] = useState('')
+  const [deliveryPayment, setDeliveryPayment] = useState<'نقدي' | 'بطاقة'>('نقدي')
+  const [deliveryCourier, setDeliveryCourier] = useState('')
+  const [deliveryStatus, setDeliveryStatus] =
+    useState<DeliveryOrder['status']>('جديد')
+
+  useEffect(() => {
+    localStorage.setItem('barni-delivery-orders', JSON.stringify(deliveryOrders))
+  }, [deliveryOrders])
+
+  const addDeliveryOrder = () => {
+    const customerName = deliveryCustomerName.trim()
+    const phone = deliveryPhone.trim()
+    const address = deliveryAddress.trim()
+    const orderDetails = deliveryDetails.trim()
+    const total = Number(deliveryTotal)
+
+    if (!customerName || !phone || !address || !orderDetails || !Number.isFinite(total) || total < 0) {
+      notify('أكمل بيانات طلب التوصيل بشكل صحيح', 'error')
+      return
+    }
+
+    const nextId =
+      deliveryOrders.reduce((max, order) => Math.max(max, order.id), 0) + 1
+
+    const order: DeliveryOrder = {
+      id: nextId,
+      customerName,
+      phone,
+      address,
+      orderDetails,
+      total,
+      paymentMethod: deliveryPayment,
+      courier: deliveryCourier.trim(),
+      status: deliveryStatus,
+      createdAt: new Date().toISOString(),
+    }
+
+    setDeliveryOrders((current) => [order, ...current])
+    setDeliveryCustomerName('')
+    setDeliveryPhone('')
+    setDeliveryAddress('')
+    setDeliveryDetails('')
+    setDeliveryTotal('')
+    setDeliveryCourier('')
+    setDeliveryStatus('جديد')
+    notify(`تمت إضافة طلب التوصيل #${nextId}`, 'success')
+  }
+
+  const updateDeliveryStatus = (
+    id: number,
+    status: DeliveryOrder['status'],
+  ) => {
+    setDeliveryOrders((current) =>
+      current.map((order) =>
+        order.id === id ? { ...order, status } : order,
+      ),
+    )
+  }
+
+  const deleteDeliveryOrder = (id: number) => {
+    setDeliveryOrders((current) =>
+      current.filter((order) => order.id !== id),
+    )
+    notify(`تم حذف طلب التوصيل #${id}`, 'success')
+  }
+
+  const openAdminSection = (
+    section: 'home' | 'products' | 'sales' | 'operations' | 'kitchen' | 'customer' | 'display',
+  ) => {
+    setAdminSection(section)
+    if (section === 'products') setPage('admin')
+    if (section === 'sales') setPage('dashboard')
+    if (section === 'operations') setPage('operations')
+    if (section === 'kitchen') setPage('kitchen')
+    if (section === 'customer') goToCustomer()
+    if (section === 'display') openCustomerDisplay()
+  }
 
   // =========================
   // عدادات الطلبات الجديدة
@@ -3141,7 +3251,8 @@ function App() {
       | 'gift-orders'
       | 'dashboard'
       | 'admin'
-      | 'operations',
+      | 'operations'
+      | 'delivery',
   ) => {
     if (!user) return false
     if (user.role === 'admin') return true
@@ -3150,7 +3261,8 @@ function App() {
         target === 'cashier' ||
         target === 'orders' ||
         target === 'gift-orders' ||
-        target === 'operations'
+        target === 'operations' ||
+        target === 'delivery'
       )
     }
     return target === 'kitchen'
@@ -4264,15 +4376,19 @@ function App() {
           <span>
             {page === 'cashier'
               ? 'نظام الكاشير'
-              : page === 'kitchen'
-                ? 'شاشة المطبخ'
-                : page === 'orders'
-                  ? 'سجل الطلبات'
+              : page === 'orders'
+                ? 'سجل الطلبات'
+                : page === 'delivery'
+                  ? 'نظام التوصيل'
                   : page === 'gift-orders'
                     ? 'طلبات الهدايا'
-                    : page === 'dashboard'
-                    ? 'لوحة المبيعات'
-                    : 'إدارة المنتجات'}
+                    : page === 'kitchen'
+                      ? 'شاشة المطبخ'
+                      : page === 'dashboard'
+                        ? 'لوحة المبيعات'
+                        : page === 'operations'
+                          ? 'التشغيل والمراقبة'
+                          : 'الإدارة'}
           </span>
         </div>
 
@@ -4302,64 +4418,18 @@ function App() {
             {soundMuted ? '🔕' : '🔊'}
           </button>
 
-          <button
-            className={
-              currentPath === '/customer'
-                ? 'nav-active'
-                : ''
-            }
-            onClick={goToCustomer}
-          >
-            موقع العميل
-          </button>
-
           {canAccess('cashier') && (
             <button
-              type="button"
-              onClick={openCustomerDisplay}
-              title="فتح شاشة العميل"
-            >
-              شاشة العميل
-            </button>
-          )}
-
-          {canAccess('cashier') && (
-            <button
-              className={
-                page === 'cashier'
-                  ? 'nav-active'
-                  : ''
-              }
-              onClick={() =>
-                setPage('cashier')
-              }
+              className={page === 'cashier' ? 'nav-active' : ''}
+              onClick={() => setPage('cashier')}
             >
               الكاشير
             </button>
           )}
 
-          {canAccess('kitchen') && (
-            <button
-              className={
-                page === 'kitchen'
-                  ? 'nav-active'
-                  : ''
-              }
-              onClick={() =>
-                setPage('kitchen')
-              }
-            >
-              المطبخ
-            </button>
-          )}
-
           {canAccess('orders') && (
             <button
-              className={
-                page === 'orders'
-                  ? 'nav-active'
-                  : ''
-              }
+              className={page === 'orders' ? 'nav-active' : ''}
               onClick={() => {
                 setPage('orders')
                 markOrdersSeen()
@@ -4389,13 +4459,38 @@ function App() {
             </button>
           )}
 
+          {canAccess('orders') && (
+            <button
+              className={page === 'delivery' ? 'nav-active' : ''}
+              onClick={() => setPage('delivery')}
+            >
+              التوصيل
+              {deliveryOrders.filter((order) => order.status === 'جديد').length > 0 && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '22px',
+                    height: '22px',
+                    marginRight: '7px',
+                    padding: '0 6px',
+                    borderRadius: '999px',
+                    background: '#c0392b',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 900,
+                  }}
+                >
+                  {deliveryOrders.filter((order) => order.status === 'جديد').length}
+                </span>
+              )}
+            </button>
+          )}
+
           {canAccess('gift-orders') && (
             <button
-              className={
-                page === 'gift-orders'
-                  ? 'nav-active'
-                  : ''
-              }
+              className={page === 'gift-orders' ? 'nav-active' : ''}
               onClick={() => {
                 setPage('gift-orders')
                 void markGiftOrdersSeen()
@@ -4425,40 +4520,17 @@ function App() {
             </button>
           )}
 
-          {canAccess('dashboard') && (
-            <button
-              className={
-                page === 'dashboard'
-                  ? 'nav-active'
-                  : ''
-              }
-              onClick={() =>
-                setPage('dashboard')
-              }
-            >
-              المبيعات
-            </button>
-          )}
-
-          {canAccess('operations') && (
-            <button
-              className={page === 'operations' ? 'nav-active' : ''}
-              onClick={() => setPage('operations')}
-            >
-              التشغيل
-            </button>
-          )}
-
           {canAccess('admin') && (
             <button
               className={
-                page === 'admin'
+                page === 'admin' || page === 'dashboard' || page === 'operations' || page === 'kitchen'
                   ? 'nav-active'
                   : ''
               }
-              onClick={() =>
+              onClick={() => {
+                setAdminSection('home')
                 setPage('admin')
-              }
+              }}
             >
               الإدارة
             </button>
@@ -4951,6 +5023,7 @@ function App() {
 
       {page === 'kitchen' && (
         <main className="kitchen-page">
+          <button type="button" className="admin-back-button" onClick={() => { setAdminSection('home'); setPage('admin') }}>← رجوع إلى الإدارة</button>
 
           <div className="kitchen-heading">
 
@@ -5184,6 +5257,7 @@ function App() {
             width: '100%',
           }}
         >
+          <button type="button" className="admin-back-button" onClick={() => { setAdminSection('home'); setPage('admin') }}>← رجوع إلى الإدارة</button>
           <div
             style={{
               display: 'flex',
@@ -5640,6 +5714,7 @@ function App() {
           display: 'grid',
           gap: 20,
         }}>
+          <button type="button" className="admin-back-button" onClick={() => { setAdminSection('home'); setPage('admin') }}>← رجوع إلى الإدارة</button>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -5962,6 +6037,186 @@ function App() {
       )}
 
       {/* =========================
+          نظام التوصيل
+      ========================= */}
+
+      {page === 'delivery' && (
+        <main className="delivery-page">
+          <div className="delivery-heading">
+            <div>
+              <h2>نظام التوصيل</h2>
+              <p>إدارة طلبات التوصيل وحالتها من داخل Barni POS</p>
+            </div>
+            <div className="delivery-count">
+              {deliveryOrders.length} طلب توصيل
+            </div>
+          </div>
+
+          <section className="delivery-form-card">
+            <div>
+              <h3>➕ إضافة طلب توصيل</h3>
+              <p>أدخل بيانات العميل والطلب، ثم تابع حالة التوصيل من نفس الصفحة.</p>
+            </div>
+
+            <div className="delivery-form-grid">
+              <label>
+                اسم العميل
+                <input
+                  value={deliveryCustomerName}
+                  onChange={(event) => setDeliveryCustomerName(event.target.value)}
+                  placeholder="مثال: أحمد"
+                />
+              </label>
+              <label>
+                رقم الهاتف
+                <input
+                  value={deliveryPhone}
+                  onChange={(event) => setDeliveryPhone(event.target.value)}
+                  placeholder="9XXXXXXX"
+                  inputMode="tel"
+                />
+              </label>
+              <label className="full">
+                العنوان
+                <input
+                  value={deliveryAddress}
+                  onChange={(event) => setDeliveryAddress(event.target.value)}
+                  placeholder="الولاية، المنطقة، الشارع..."
+                />
+              </label>
+              <label className="full">
+                تفاصيل الطلب
+                <textarea
+                  value={deliveryDetails}
+                  onChange={(event) => setDeliveryDetails(event.target.value)}
+                  placeholder="مثال: 2 لاتيه + كرواسون"
+                />
+              </label>
+              <label>
+                الإجمالي
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={deliveryTotal}
+                  onChange={(event) => setDeliveryTotal(event.target.value)}
+                  placeholder="0.00"
+                />
+              </label>
+              <label>
+                طريقة الدفع
+                <select
+                  value={deliveryPayment}
+                  onChange={(event) =>
+                    setDeliveryPayment(event.target.value as 'نقدي' | 'بطاقة')
+                  }
+                >
+                  <option value="نقدي">نقدي</option>
+                  <option value="بطاقة">بطاقة</option>
+                </select>
+              </label>
+              <label>
+                المندوب
+                <input
+                  value={deliveryCourier}
+                  onChange={(event) => setDeliveryCourier(event.target.value)}
+                  placeholder="اسم المندوب"
+                />
+              </label>
+              <label>
+                الحالة
+                <select
+                  value={deliveryStatus}
+                  onChange={(event) =>
+                    setDeliveryStatus(event.target.value as DeliveryOrder['status'])
+                  }
+                >
+                  <option>جديد</option>
+                  <option>قيد التجهيز</option>
+                  <option>جاهز للتوصيل</option>
+                  <option>خرج للتوصيل</option>
+                  <option>تم التوصيل</option>
+                </select>
+              </label>
+            </div>
+
+            <button className="delivery-primary-button" type="button" onClick={addDeliveryOrder}>
+              إضافة طلب التوصيل
+            </button>
+          </section>
+
+          <section className="delivery-list-card">
+            <div className="delivery-list-title">
+              <div>
+                <h3>📦 طلبات التوصيل</h3>
+                <p>تابع كل طلب من لحظة استلامه حتى التسليم.</p>
+              </div>
+            </div>
+
+            {deliveryOrders.length === 0 ? (
+              <div className="delivery-empty">
+                <div>🚚</div>
+                <h3>لا توجد طلبات توصيل</h3>
+                <p>أضف أول طلب من النموذج أعلاه.</p>
+              </div>
+            ) : (
+              <div className="delivery-orders-grid">
+                {deliveryOrders.map((order) => (
+                  <article className="delivery-order-card" key={order.id}>
+                    <div className="delivery-order-top">
+                      <div>
+                        <strong>طلب توصيل #{order.id}</strong>
+                        <small>{new Date(order.createdAt).toLocaleString('ar-OM')}</small>
+                      </div>
+                      <span className="delivery-status">{order.status}</span>
+                    </div>
+
+                    <div className="delivery-order-info">
+                      <span>👤 {order.customerName}</span>
+                      <span>📞 {order.phone}</span>
+                      <span>📍 {order.address}</span>
+                      <span>💳 {order.paymentMethod}</span>
+                      {order.courier && <span>🚴 {order.courier}</span>}
+                    </div>
+
+                    <div className="delivery-order-details">
+                      {order.orderDetails}
+                    </div>
+
+                    <div className="delivery-order-bottom">
+                      <strong>{order.total.toFixed(2)} ر.ع</strong>
+                      <select
+                        value={order.status}
+                        onChange={(event) =>
+                          updateDeliveryStatus(
+                            order.id,
+                            event.target.value as DeliveryOrder['status'],
+                          )
+                        }
+                      >
+                        <option>جديد</option>
+                        <option>قيد التجهيز</option>
+                        <option>جاهز للتوصيل</option>
+                        <option>خرج للتوصيل</option>
+                        <option>تم التوصيل</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="delivery-delete-button"
+                        onClick={() => deleteDeliveryOrder(order.id)}
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+      )}
+
+      {/* =========================
           طلبات الهدايا
       ========================= */}
 
@@ -6246,6 +6501,56 @@ function App() {
 
       {page === 'admin' && (
         <main className="admin-page">
+
+          {adminSection === 'home' && (
+            <>
+              <div className="admin-heading">
+                <div>
+                  <h2>الإدارة</h2>
+                  <p>كل أدوات النظام الإضافية مرتبة في مكان واحد.</p>
+                </div>
+              </div>
+
+              <div className="admin-menu-grid">
+                <button type="button" onClick={() => openAdminSection('products')}>
+                  <span>📦</span>
+                  <strong>المنتجات والمخزون</strong>
+                  <small>إضافة وتعديل المنتجات والأسعار والمخزون</small>
+                </button>
+                <button type="button" onClick={() => openAdminSection('sales')}>
+                  <span>📊</span>
+                  <strong>المبيعات والتقارير</strong>
+                  <small>المبيعات، الإحصائيات والتقارير</small>
+                </button>
+                <button type="button" onClick={() => openAdminSection('operations')}>
+                  <span>⚙️</span>
+                  <strong>التشغيل</strong>
+                  <small>الورديات والمصروفات والنسخ الاحتياطي</small>
+                </button>
+                <button type="button" onClick={() => openAdminSection('kitchen')}>
+                  <span>👨‍🍳</span>
+                  <strong>المطبخ</strong>
+                  <small>شاشة تجهيز الطلبات ومتابعتها</small>
+                </button>
+                <button type="button" onClick={() => openAdminSection('customer')}>
+                  <span>🌐</span>
+                  <strong>موقع العميل</strong>
+                  <small>فتح موقع العميل من داخل النظام</small>
+                </button>
+                <button type="button" onClick={() => openAdminSection('display')}>
+                  <span>🖥️</span>
+                  <strong>شاشة العميل</strong>
+                  <small>فتح شاشة عرض الطلب للعميل</small>
+                </button>
+              </div>
+            </>
+          )}
+
+          {adminSection === 'products' && (
+            <div className="admin-subpage">
+              <button type="button" className="admin-back-button" onClick={() => setAdminSection('home')}>
+                ← رجوع إلى الإدارة
+              </button>
 
           <div className="admin-heading">
 
@@ -6861,6 +7166,9 @@ function App() {
             </div>
 
           </section>
+
+            </div>
+          )}
 
         </main>
       )}
